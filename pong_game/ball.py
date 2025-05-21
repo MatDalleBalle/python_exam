@@ -8,11 +8,11 @@ class Ball:
         self.speed_x = random.choice([-speed, speed])
         self.speed_y = random.choice([-speed, speed])
 
-    def update(self, width, height):
+    def update(self):
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
 
-        if self.rect.top <= 0 or self.rect.bottom >= height:
+        if self.rect.top <= 0 or self.rect.bottom >= 600:
             self.speed_y *= -1
 
     def reset(self, x, y):

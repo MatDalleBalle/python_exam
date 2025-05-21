@@ -10,9 +10,6 @@ def run_game(mode):
     clock = pygame.time.Clock()
     font = pygame.font.SysFont(None, 48)
     
-    
-
-
     # Objekter 
     paddle_width, paddle_height = 10, 100
     speed = 6
@@ -23,91 +20,92 @@ def run_game(mode):
     ball = Ball(WIDTH // 2, HEIGHT // 2, 15, ball_speed)
 
     # Sætter Score for begge spillere
-    score1 = 0
-    score2 = 0
+    score_p1 = 0
+    score_p2 = 0
+    max_score = 5
 
-    running = True
-    while running:
+    game_over = False
+    winner = None
+    
+    while True:
         screen.fill((0, 0, 0))
-
-        # Tegner en midterlinje
-        for y in range(0, HEIGHT, 20):
-            if y % 40 == 0:
-                pygame.draw.rect(screen, (255, 255, 255), (WIDTH // 2 - 1, y, 2, 20))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
         
-        # input håndtering (spiller 1)
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            paddle1.move_up()
-        if keys[pygame.K_s]:
-            paddle1.move_down(HEIGHT)
+        if not game_over:
+            # Tegner paddles, bold og score
+            pygame.draw.rect(screen, (255, 255, 255), paddle1.rect)
+            pygame.draw.rect(screen, (255, 255, 255), paddle2.rect)
+            pygame.draw.ellipse(screen, (255, 255, 255), ball.rect)
+            pygame.draw.line(screen, (255, 255, 255), (WIDTH // 2, 0), (WIDTH // 2, HEIGHT), 1)
+
+            # Input for spiller 1 (w/s)
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_w]:
+                paddle1.move(up=True)
+            if keys[pygame.K_s]:
+                paddle1.move(up=False)
+
+            # Input for spiller 2 / Ai (op/ned)
+            if mode == "2 Players":
+                if keys[pygame.K_UP]:
+                    paddle2.move(up=True)
+                if keys[pygame.K_DOWN]:
+                    paddle2.move(up=False)
+            elif mode == "vs AI":
+                if ball.rect.centery < paddle2.rect.centery:
+                    paddle2.move(up=True)
+                elif ball.rect.centery > paddle2.rect.centery:
+                    paddle2.move(up=False)
+
+            # Boldens bevægelse
+            ball.update()
+
+            # Bold-kollision med paddles
+            if ball.rect.colliderect(paddle1.rect) or ball.rect.colliderect(paddle2.rect):
+                ball.speed_x = -ball.speed_x
         
-        # input håndtering (spiller 2 eller AI)
-        if mode == "2player":
-            if keys[pygame.K_UP]:
-                paddle2.move_up()
-            if keys[pygame.K_DOWN]:
-                paddle2.move_down(HEIGHT)
-        else:
-            # AI logik for paddle2
-            if ball.rect.centery < paddle2.rect.centery:
-                paddle2.move_up()
-            elif ball.rect.centery > paddle2.rect.centery:
-                paddle2.move_down(HEIGHT)
+            # Score-logik og boldens position reset
+            if ball.rect.left < 0:
+                score_p2 += 1
+                ball.reset(WIDTH // 2, HEIGHT // 2)
+            elif ball.rect.right > WIDTH:
+                score_p1 += 1
+                ball.reset(WIDTH // 2, HEIGHT // 2)
 
-        # Opdatering af boldens position
-        ball.update(WIDTH, HEIGHT)
+            # Tegn score
+            score_text = font.render(f"Player 1: {score_p1}  Player 2: {score_p2}", True, (255, 255, 255))
+            screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 20))
 
-        # Kollision mellem bold og paddles
-        if ball.rect.colliderect(paddle1.rect) or ball.rect.colliderect(paddle2.rect):
-            ball.speed_x *= -1
+            # Tjek for vinderen
+            if score_p1 >= max_score or score_p2 >= max_score:
+                winner = "Player 1" if score_p1 >= max_score else "Player 2"
+                win_text = font.render(f"{winner} wins!", True, (255, 255, 255))
+                info_text = font.render("Press R to restart or ESC to exit", True, (255, 255, 255))
 
-        # score (reset bolden)
-        if ball.rect.left <= 0:
-            score2 += 1
-            ball.reset(WIDTH // 2, HEIGHT // 2)
-        
-        if ball.rect.right >= WIDTH:
-            score1 += 1
-            ball.reset(WIDTH // 2, HEIGHT // 2)
+                screen.fill((0, 0, 0))
+                screen.blit(win_text, (WIDTH // 2 - win_text.get_width() // 2, HEIGHT // 2 - 60))
+                screen.blit(info_text, (WIDTH // 2 - info_text.get_width() // 2, HEIGHT // 2))
+                pygame.display.flip()
 
-        # Check for vinder
-        if score1 >= 5 or score2 >= 5:
-            winner = "Player 1" if score1 >= 5 else "Player 2"
-            win_text = font.render(f"{winner}", True, (255, 255, 255))
-        
-        # Viser objekter
-        paddle1.draw(screen)
-        paddle2.draw(screen)
-        ball.draw(screen)
-
-        # Viser score
-        score_text = font.render(f"{score1} - {score2}", True, (255, 255, 255))
-        screen.blit(score_text, (WIDTH // 2 - 40, 20))
+                waiting = True
+                while waiting:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            pygame.quit()
+                            return
+                        if event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_r:
+                                return run_game(mode)
+                            elif event.key == pygame.K_ESCAPE:
+                                return pygame.quit()
 
 
-        pygame.display.flip()
-        clock.tick(60)
-
-    # efter spillet: spil igen eller menu
-    screen.fill((0, 0, 0))
-    msg = font.render("Tryk R for at spille igen eller Q for at afslutte", True, (255, 255, 255))
-    screen.blit(msg, (WIDTH // 2 - msg.get_width() // 2, HEIGHT // 2 - 24))
-    pygame.display.flip()
-
-    waiting = True
-    while waiting:
+        # Event-håndtering
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:
-                    waiting = False
-                elif event.key == pygame.K_q:
-                    return
-    
+        
+        pygame.display.flip()
+        clock.tick(60)
+        
+
